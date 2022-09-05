@@ -91,4 +91,12 @@ func (r *Run) Start() {
 		fmt.Println(ioprinter.Diff(r.Spec.Stdout, string(output)))
 		r.Errors = append(r.Errors, ErrStdoutMismatch)
 	}
+
+	if r.Verbose {
+		fmt.Println("Verbose output for test", r.TestIndex, ":")
+		fmt.Printf("Expected Stdout:\n---\n%s\n---\n", r.Spec.Stdout)
+		fmt.Printf("Actual Stdout:\n---\n%s\n---\n", string(output))
+		fmt.Printf("Expected Exit Code: %d\n", r.Spec.ExitCode)
+		fmt.Printf("Actual Exit Code: %d\n", r.Spec.Cmd.ProcessState.ExitCode())
+	}
 }
