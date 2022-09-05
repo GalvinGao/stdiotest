@@ -54,8 +54,11 @@ func main() {
 					v := c.Bool("verbose")
 
 					runs := make([]*runner.Run, 0, len(conf.TestCases))
-					for _, t := range conf.TestCases {
-						runs = append(runs, runner.New(spec.NewTestCaseFromConfig(t)))
+					for i, t := range conf.TestCases {
+						r := runner.New(spec.NewTestCaseFromConfig(t))
+						r.Verbose = v
+						r.TestIndex = i
+						runs = append(runs, r)
 					}
 
 					r := runner.Runner{

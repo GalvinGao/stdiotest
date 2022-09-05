@@ -33,6 +33,7 @@ func (r *Runner) Start() error {
 	var (
 		wg      sync.WaitGroup
 		limiter = make(chan struct{}, r.Concurrency)
+		errs    []error
 	)
 	for i, run := range r.Runs {
 		limiter <- struct{}{}
@@ -48,6 +49,7 @@ func (r *Runner) Start() error {
 
 			if len(run.Errors) > 0 {
 				log.Error().Errs("errors", run.Errors).Msgf("run %d failed", i)
+				errs = append(errs, run.Errors...)
 			} else {
 				log.Info().Msgf("run %d passed", i)
 			}
@@ -56,5 +58,9 @@ func (r *Runner) Start() error {
 
 	wg.Wait()
 
-	return nil
+	if len(errs) > 0 {
+		return errors.New("one or more test cases failed")
+	} else {
+		return nil
+	}
 }

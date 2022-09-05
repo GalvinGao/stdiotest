@@ -21,6 +21,10 @@ type Run struct {
 	Spec *spec.TestCase
 
 	Errors []error
+
+	Verbose bool
+
+	TestIndex int
 }
 
 func New(t *spec.TestCase) *Run {
@@ -36,21 +40,21 @@ func (r *Run) Start() {
 
 	pipe, err := r.Spec.Cmd.StdinPipe()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to create stdin pipe")
+		log.Error().Int("test", r.TestIndex).Err(err).Msg("failed to create stdin pipe")
 		r.Errors = append(r.Errors, err)
 		return
 	}
 
 	_, err = buf.WriteTo(pipe)
 	if err != nil {
-		log.Error().Err(err).Msg("failed to write to stdin pipe")
+		log.Error().Int("test", r.TestIndex).Err(err).Msg("failed to write to stdin pipe")
 		r.Errors = append(r.Errors, err)
 		return
 	}
 
 	err = pipe.Close()
 	if err != nil {
-		log.Error().Err(err).Msg("failed to close stdin pipe")
+		log.Error().Int("test", r.TestIndex).Err(err).Msg("failed to close stdin pipe")
 		r.Errors = append(r.Errors, err)
 		return
 	}
@@ -67,22 +71,24 @@ func (r *Run) Start() {
 		exitErr, ok := err.(*exec.ExitError)
 
 		if !ok {
-			log.Error().Err(err).Msg("failed to get command output")
+			log.Error().Int("test", r.TestIndex).Err(err).Msg("failed to get command output")
 			r.Errors = append(r.Errors, err)
-			return
 		}
 
 		if exitErr.ExitCode() != r.Spec.ExitCode {
-			log.Error().Err(ErrExitCodeMismatch).Msgf("exit code mismatch: expected %d, got %d", r.Spec.ExitCode, exitErr.ExitCode())
+			log.Error().Int("test", r.TestIndex).Err(ErrExitCodeMismatch).Msgf("exit code mismatch: expected %d, got %d", r.Spec.ExitCode, exitErr.ExitCode())
 			r.Errors = append(r.Errors, ErrExitCodeMismatch)
-			return
 		}
-
-		if string(output) != r.Spec.Stdout {
-			fmt.Println(ioprinter.Diff(r.Spec.Stdout, string(output)))
-			e := errors.Wrapf(ErrStdoutMismatch, "got %s (expecting %s)", string(output), r.Spec.Stdout)
-			r.Errors = append(r.Errors, e)
+	} else {
+		if r.Spec.ExitCode != 0 {
+			log.Error().Int("test", r.TestIndex).Err(ErrExitCodeMismatch).Msgf("exit code mismatch: expected %d, got 0", r.Spec.ExitCode)
+			r.Errors = append(r.Errors, ErrExitCodeMismatch)
 		}
+	}
 
+	if string(output) != r.Spec.Stdout {
+		log.Error().Int("test", r.TestIndex).Err(ErrStdoutMismatch).Msg("stdout mismatch")
+		fmt.Println(ioprinter.Diff(r.Spec.Stdout, string(output)))
+		r.Errors = append(r.Errors, ErrStdoutMismatch)
 	}
 }
